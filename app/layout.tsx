@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Kazan Grain Monitor",
-  description: "Interactive showcase for acoustic grain infestation monitoring.",
+  title: "Kolos · Grain Acoustic Monitor",
+  description: "Prototype dashboard for acoustic grain pest monitoring.",
 };
 
 export default function RootLayout({
