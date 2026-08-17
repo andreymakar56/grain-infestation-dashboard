@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -8,22 +8,17 @@ import {
   BatteryMedium,
   Bell,
   Check,
-  CheckCircle2,
   ChevronRight,
   Clock,
   Database,
   Droplets,
   LayoutDashboard,
-  LineChart as LineChartIcon,
   Mail,
   MapPin,
   Menu,
   MessageCircle,
-  Play,
   Radio,
-  RotateCcw,
   Search,
-  Settings,
   ShieldCheck,
   SlidersHorizontal,
   Smartphone,
@@ -57,33 +52,22 @@ import {
   sensors as seedSensors,
   silos as seedSilos,
 } from "@/lib/mock-data";
-import type { Alert, AlertState, Sensor, Silo, SystemStatus } from "@/lib/types";
+import type { Alert, Sensor, Silo, SystemStatus } from "@/lib/types";
 
 type View = "overview" | "silos" | "silo-detail" | "sensors" | "alerts" | "analytics" | "settings";
 
 const navigation = [
   { id: "overview" as const, label: "Overview", icon: LayoutDashboard },
   { id: "silos" as const, label: "Silos", icon: Warehouse },
-  { id: "sensors" as const, label: "Sensors", icon: Radio },
   { id: "alerts" as const, label: "Alerts", icon: Bell },
-  { id: "analytics" as const, label: "Analytics", icon: LineChartIcon },
-  { id: "settings" as const, label: "Settings", icon: Settings },
 ];
-
-const simulationSteps = [15, 23, 39, 51, 68, 78, 87];
 
 const statusMeta: Record<SystemStatus, { label: string; tone: "normal" | "warning" | "critical" | "offline" }> = {
   normal: { label: "Normal", tone: "normal" },
-  suspicious: { label: "Suspicious", tone: "warning" },
-  critical: { label: "Probable infestation", tone: "critical" },
-  offline: { label: "Sensor offline", tone: "offline" },
+  suspicious: { label: "Attention", tone: "warning" },
+  critical: { label: "High activity", tone: "critical" },
+  offline: { label: "No data", tone: "offline" },
 };
-
-function statusForSimulatedScore(score: number) {
-  if (score < 40) return "normal" as const;
-  if (score < 87) return "suspicious" as const;
-  return "critical" as const;
-}
 
 function StatusBadge({ status }: { status: SystemStatus }) {
   const meta = statusMeta[status];
@@ -110,99 +94,29 @@ export function GrainDashboard() {
   const [activeView, setActiveView] = useState<View>("overview");
   const [selectedSiloId, setSelectedSiloId] = useState("silo-04");
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [notificationOpen, setNotificationOpen] = useState(false);
-  const [alerts, setAlerts] = useState<Alert[]>(initialAlerts);
-  const [simulationRunning, setSimulationRunning] = useState(false);
-  const [simulationIndex, setSimulationIndex] = useState(simulationSteps.length - 1);
-  const [now, setNow] = useState<Date | null>(null);
-
-  useEffect(() => {
-    const clock = window.setInterval(() => setNow(new Date()), 1000);
-    return () => window.clearInterval(clock);
-  }, []);
-
-  useEffect(() => {
-    if (!simulationRunning) return;
-    const timer = window.setTimeout(() => {
-      const nextIndex = simulationIndex + 1;
-      setSimulationIndex(nextIndex);
-      if (nextIndex >= simulationSteps.length - 1) {
-        setSimulationRunning(false);
-        setAlerts((current) => current.some((alert) => alert.id === "alert-demo") ? current : [
-          {
-            ...initialAlerts[0],
-            id: "alert-demo",
-            timestamp: "Just now",
-            state: "new",
-            message: "Elevated activity was confirmed across multiple readings over a simulated 42-minute analysis window.",
-          },
-          ...current,
-        ]);
-        setNotificationOpen(true);
-      }
-    }, 850);
-    return () => window.clearTimeout(timer);
-  }, [simulationRunning, simulationIndex]);
-
-  const simulationScore = simulationSteps[simulationIndex];
-  const simulationStatus = statusForSimulatedScore(simulationScore);
-
-  const silos = useMemo<Silo[]>(() => seedSilos.map((silo) =>
-    silo.id === "silo-04"
-      ? { ...silo, maxActivity: simulationScore, status: simulationStatus, lastUpdate: simulationRunning ? "Live" : silo.lastUpdate }
-      : silo,
-  ), [simulationScore, simulationStatus, simulationRunning]);
-
-  const sensors = useMemo<Sensor[]>(() => seedSensors.map((sensor) =>
-    sensor.id === "S4-C"
-      ? { ...sensor, activityScore: simulationScore, status: simulationStatus, lastReading: simulationRunning ? "Now" : sensor.lastReading }
-      : sensor,
-  ), [simulationScore, simulationStatus, simulationRunning]);
+  const alerts = initialAlerts;
+  const silos = seedSilos;
+  const sensors = seedSensors;
 
   const selectedSilo = silos.find((silo) => silo.id === selectedSiloId) ?? silos[3];
   const selectedSensors = sensors.filter((sensor) => sensor.siloId === selectedSilo.id);
   const unreadAlerts = alerts.filter((alert) => alert.state === "new").length;
-  const critical = silos.filter((silo) => silo.status === "critical").length;
-  const suspicious = silos.filter((silo) => silo.status === "suspicious").length;
-  const normal = silos.filter((silo) => silo.status === "normal").length;
   const activeSensors = sensors.filter((sensor) => sensor.connectivity === "online").length;
 
   const detailHistory = useMemo(() => {
-    if (selectedSilo.id !== "silo-04") {
-      return activityHistory.map((point, index) => ({ ...point, activity: Math.max(4, Math.round(selectedSilo.maxActivity * (0.55 + index * 0.06))) }));
-    }
-    return [...activityHistory.slice(0, -1), { time: "Now", activity: simulationScore }];
-  }, [selectedSilo, simulationScore]);
+    if (selectedSilo.id === "silo-04") return activityHistory;
+    return activityHistory.map((point, index) => ({ ...point, activity: Math.max(4, Math.round(selectedSilo.maxActivity * (0.55 + index * 0.06))) }));
+  }, [selectedSilo]);
 
   const goTo = (view: View) => {
     setActiveView(view);
     setMobileOpen(false);
-    setNotificationOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const openSilo = (id: string) => {
     setSelectedSiloId(id);
     goTo("silo-detail");
-  };
-
-  const startSimulation = () => {
-    setAlerts(initialAlerts);
-    setNotificationOpen(false);
-    setSimulationIndex(0);
-    setSimulationRunning(true);
-    goTo("overview");
-  };
-
-  const resetSimulation = () => {
-    setSimulationRunning(false);
-    setSimulationIndex(simulationSteps.length - 1);
-    setAlerts(initialAlerts);
-    setNotificationOpen(false);
-  };
-
-  const updateAlert = (id: string, state: AlertState) => {
-    setAlerts((current) => current.map((alert) => alert.id === id ? { ...alert, state } : alert));
   };
 
   const title = activeView === "silo-detail" ? selectedSilo.name : navigation.find((item) => item.id === activeView)?.label ?? "Overview";
@@ -222,34 +136,16 @@ export function GrainDashboard() {
           </div>
 
           <div className="topbar-right">
-            <div className="system-online"><span className="pulse-dot" />System online</div>
-            <div className="sync-meta">
-              <strong>{now ? now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "--:--"}</strong>
-              <span>{now ? now.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "12 Aug 2026"} · Synced 20 sec ago</span>
-            </div>
-            <div className="notification-wrap">
-              <button className="icon-button" aria-label="Open notifications" onClick={() => setNotificationOpen((open) => !open)}>
-                <Bell size={19} />
-                {unreadAlerts > 0 ? <span className="notification-count">{unreadAlerts}</span> : null}
-              </button>
-              {notificationOpen ? (
-                <NotificationCenter
-                  alerts={alerts}
-                  onClose={() => setNotificationOpen(false)}
-                  onViewSilo={() => openSilo("silo-04")}
-                  onViewAll={() => goTo("alerts")}
-                />
-              ) : null}
-            </div>
-            <button className="profile-button" aria-label="Open user profile"><span>AM</span><div><strong>Alex Morozov</strong><small>Facility operator</small></div></button>
+            <Badge tone="neutral">Prototype</Badge>
+            <span className="mock-data-label">Mock data</span>
           </div>
         </header>
 
         <main className="content">
-          {activeView === "overview" ? <OverviewPage silos={silos} normal={normal} suspicious={suspicious} critical={critical} activeSensors={activeSensors} simulationScore={simulationScore} simulationStatus={simulationStatus} simulationRunning={simulationRunning} openSilo={openSilo} startSimulation={startSimulation} resetSimulation={resetSimulation} /> : null}
+          {activeView === "overview" ? <OverviewPage silos={silos} activeSensors={activeSensors} alertCount={alerts.length} openSilo={openSilo} /> : null}
           {activeView === "silos" ? <SilosPage silos={silos} openSilo={openSilo} /> : null}
           {activeView === "silo-detail" ? <SiloDetailPage silo={selectedSilo} sensors={selectedSensors} history={detailHistory} goBack={() => goTo("overview")} /> : null}
-          {activeView === "alerts" ? <AlertsPage alerts={alerts} updateAlert={updateAlert} openSilo={openSilo} /> : null}
+          {activeView === "alerts" ? <AlertsPage alerts={alerts} openSilo={openSilo} /> : null}
           {activeView === "sensors" ? <SensorsPage sensors={sensors} /> : null}
           {activeView === "analytics" ? <AnalyticsPage silos={silos} /> : null}
           {activeView === "settings" ? <SettingsPage /> : null}
@@ -286,55 +182,41 @@ function Sidebar({ activeView, mobileOpen, unreadAlerts, goTo, close }: { active
             );
           })}
         </nav>
-        <div className="sidebar-health">
-          <div className="health-icon"><ShieldCheck size={18} /></div>
-          <div><strong>Monitoring active</strong><span>46 of 48 sensors online</span></div>
-        </div>
-        <p className="sidebar-version">Gateway KZN-01 · v2.4.1</p>
+        <p className="sidebar-version">Early dashboard prototype</p>
       </aside>
     </>
   );
 }
 
-function OverviewPage({ silos, normal, suspicious, critical, activeSensors, simulationScore, simulationStatus, simulationRunning, openSilo, startSimulation, resetSimulation }: { silos: Silo[]; normal: number; suspicious: number; critical: number; activeSensors: number; simulationScore: number; simulationStatus: SystemStatus; simulationRunning: boolean; openSilo: (id: string) => void; startSimulation: () => void; resetSimulation: () => void }) {
-  const attention = simulationStatus !== "normal";
+function OverviewPage({ silos, activeSensors, alertCount, openSilo }: { silos: Silo[]; activeSensors: number; alertCount: number; openSilo: (id: string) => void }) {
   return (
     <div className="page-stack">
       <div className="overview-heading">
         <div>
-          <p className="eyebrow">Facility risk overview</p>
-          <h2>{critical ? "Action required in Silo 04" : suspicious ? "Elevated activity under review" : "Facility operating normally"}</h2>
-          <p>Live acoustic analysis across 12 storage silos. Readings are validated over time to reduce false alarms.</p>
-        </div>
-        <div className="demo-controls">
-          <div className={`demo-progress ${simulationRunning ? "demo-progress-active" : ""}`}>
-            <span>Demo mode</span><strong>{simulationRunning ? `${simulationScore}% activity` : "Ready"}</strong>
-          </div>
-          <Button onClick={startSimulation} disabled={simulationRunning}><Play size={16} fill="currentColor" />{simulationRunning ? "Simulating…" : "Simulate infestation"}</Button>
-          <Button variant="secondary" onClick={resetSimulation}><RotateCcw size={16} />Reset</Button>
+          <p className="eyebrow">Acoustic monitoring prototype</p>
+          <h2>Storage overview</h2>
+          <p>Static demonstration of how sensor readings could be shown to an elevator operator.</p>
         </div>
       </div>
 
-      <Card className={`decision-banner decision-${simulationStatus}`}>
-        <div className="decision-icon">{simulationStatus === "critical" ? <AlertTriangle size={24} /> : attention ? <Activity size={24} /> : <CheckCircle2 size={24} />}</div>
+      <Card className="decision-banner decision-critical">
+        <div className="decision-icon"><AlertTriangle size={24} /></div>
         <div className="decision-copy">
-          <span>{simulationStatus === "critical" ? "Probable infestation" : attention ? "Elevated activity" : "No immediate risk"}</span>
-          <strong>{simulationStatus === "critical" ? "Inspect Silo 04 · lower-middle section" : attention ? "Silo 04 is being evaluated across consecutive readings" : "All monitored zones are within normal thresholds"}</strong>
-          <small>{simulationStatus === "critical" ? "Sensor C · 87% confidence · sustained for 42 minutes" : simulationRunning ? `Sensor C · ${simulationScore}% activity · persistence analysis running` : "No action required"}</small>
+          <span>Demo alert</span>
+          <strong>High acoustic activity in Silo 04</strong>
+          <small>Sensor C · lower-middle section · activity level 87%</small>
         </div>
-        {attention ? <button onClick={() => openSilo("silo-04")}>Open Silo 04 <ChevronRight size={17} /></button> : null}
+        <button onClick={() => openSilo("silo-04")}>Open Silo 04 <ChevronRight size={17} /></button>
       </Card>
 
       <section className="kpi-grid" aria-label="Facility key metrics">
-        <KpiCard label="Total silos" value="12" icon={<Warehouse size={19} />} note="60,000 t capacity" />
-        <KpiCard label="Normal" value={normal.toString()} status="normal" note="Within acoustic baseline" />
-        <KpiCard label="Suspicious" value={suspicious.toString()} status="suspicious" note="Requires observation" />
-        <KpiCard label="Critical" value={critical.toString()} status="critical" note="Physical inspection needed" />
-        <KpiCard label="Active sensors" value={`${activeSensors} / 48`} icon={<Radio size={19} />} note="2 sensors need attention" />
+        <KpiCard label="Silos" value={silos.length.toString()} icon={<Warehouse size={19} />} note="Demo facility" />
+        <KpiCard label="Sensors online" value={`${activeSensors} / 48`} icon={<Radio size={19} />} note="Simulated status" />
+        <KpiCard label="Alerts" value={alertCount.toString()} status="critical" note="Demo events" />
       </section>
 
       <section>
-        <SectionHeading title="Silo status" description="Maximum validated insect activity detected in each grain mass." action={<div className="legend"><span><i className="legend-normal" />Normal</span><span><i className="legend-warning" />Suspicious</span><span><i className="legend-critical" />Probable infestation</span><span><i className="legend-offline" />Offline</span></div>} />
+        <SectionHeading title="Silo status" description="Current mock activity level for each silo." action={<div className="legend"><span><i className="legend-normal" />Normal</span><span><i className="legend-warning" />Attention</span><span><i className="legend-critical" />High activity</span><span><i className="legend-offline" />Offline</span></div>} />
         <div className="silo-grid">
           {silos.map((silo) => <SiloCard key={silo.id} silo={silo} onClick={() => openSilo(silo.id)} />)}
         </div>
@@ -371,7 +253,7 @@ function SiloCard({ silo, onClick }: { silo: Silo; onClick: () => void }) {
 function SilosPage({ silos, openSilo }: { silos: Silo[]; openSilo: (id: string) => void }) {
   return (
     <div className="page-stack">
-      <SectionHeading eyebrow="Storage inventory" title="All silos" description="Capacity, fill level, acoustic status, and environmental conditions across the facility." />
+      <SectionHeading eyebrow="Prototype view" title="All silos" description="Static monitoring data used for the presentation." />
       <div className="silo-inventory-grid">
         {silos.map((silo) => (
           <Card key={silo.id} className={`inventory-card inventory-${silo.status}`}>
@@ -391,28 +273,25 @@ function SiloDetailPage({ silo, sensors, history, goBack }: { silo: Silo; sensor
     <div className="page-stack">
       <button className="back-link" onClick={goBack}><ArrowLeft size={16} />Back to overview</button>
       <div className="detail-heading">
-        <div><p className="eyebrow">Silo monitoring detail</p><div className="title-with-status"><h2>{silo.name}</h2><StatusBadge status={silo.status} /></div><p>{silo.grain} · {silo.fillPercent}% full · {silo.capacityTonnes.toLocaleString()} t capacity</p></div>
-        <div className="last-reading"><span>Last reading</span><strong>{silo.lastUpdate}</strong></div>
+        <div><p className="eyebrow">Silo prototype view</p><div className="title-with-status"><h2>{silo.name}</h2><StatusBadge status={silo.status} /></div><p>{silo.grain} · {silo.fillPercent}% full · {silo.capacityTonnes.toLocaleString()} t capacity</p></div>
       </div>
 
       <div className="detail-primary-grid">
         <Card className="silo-visual-card">
-          <div className="card-title-row"><div><span className="eyebrow">Activity location</span><h3>Sensor depth profile</h3></div><Badge tone="blue">Live readings</Badge></div>
+          <div className="card-title-row"><div><span className="eyebrow">Activity location</span><h3>Sensor depth profile</h3></div><Badge tone="neutral">Demo data</Badge></div>
           <SiloVisualization sensors={sensors} fillPercent={silo.fillPercent} />
           <div className="visual-callout"><MapPin size={17} /><div><span>Highest activity detected</span><strong>{highest.position} · {highest.name}</strong></div><b>{highest.activityScore}%</b></div>
         </Card>
 
         <div className="detail-side">
           <Card className={`risk-card risk-${silo.status}`}>
-            <span>Current assessment</span><StatusBadge status={silo.status} />
-            <strong>{silo.status === "critical" ? "Physical inspection recommended" : silo.status === "suspicious" ? "Continue close monitoring" : "No intervention required"}</strong>
-            <p>{silo.status === "critical" ? `Activity near ${highest.position.toLowerCase()} has remained above the critical threshold for 42 minutes.` : "Acoustic readings remain below the intervention threshold."}</p>
+            <span>Current demo reading</span><StatusBadge status={silo.status} />
+            <strong>{silo.status === "critical" ? "High acoustic activity" : silo.status === "suspicious" ? "Activity above baseline" : "Activity within baseline"}</strong>
+            <p>{silo.status === "normal" ? "No unusual acoustic activity is shown in the mock readings." : `${highest.name} shows the highest activity near the ${highest.position.toLowerCase()}.`}</p>
           </Card>
           <div className="detail-metric-grid">
             <Metric label="Highest activity" value={`${silo.maxActivity}%`} icon={<Activity size={18} />} />
             <Metric label="Active sensors" value={`${silo.activeSensors} / 4`} icon={<Radio size={18} />} />
-            <Metric label="Suspicious since" value={silo.status === "critical" ? "42 min" : "—"} icon={<Clock size={18} />} />
-            <Metric label="Last inspection" value="8 Aug 2026" icon={<CheckCircle2 size={18} />} />
             <Metric label="Temperature" value={`${silo.temperature}°C`} icon={<Thermometer size={18} />} />
             <Metric label="Humidity" value={`${silo.humidity}% RH`} icon={<Droplets size={18} />} />
           </div>
@@ -420,7 +299,7 @@ function SiloDetailPage({ silo, sensors, history, goBack }: { silo: Silo; sensor
       </div>
 
       <Card className="chart-card">
-        <div className="card-title-row"><div><span className="eyebrow">Validated readings</span><h3>Insect activity over time</h3><p>Activity score from the highest-reading sensor. Thresholds require persistence across consecutive readings.</p></div><div className="threshold-legend"><span><i className="normal-zone" />Normal &lt;40%</span><span><i className="warning-zone" />Warning 40–70%</span><span><i className="critical-zone" />Critical &gt;70%</span></div></div>
+        <div className="card-title-row"><div><span className="eyebrow">Example history</span><h3>Acoustic activity over time</h3><p>Static readings prepared for the prototype presentation.</p></div><div className="threshold-legend"><span><i className="normal-zone" />Normal &lt;40%</span><span><i className="warning-zone" />Attention 40–70%</span><span><i className="critical-zone" />High &gt;70%</span></div></div>
         <div className="activity-chart">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={history} margin={{ top: 12, right: 12, left: -14, bottom: 0 }}>
@@ -440,7 +319,7 @@ function SiloDetailPage({ silo, sensors, history, goBack }: { silo: Silo; sensor
       </Card>
 
       <section>
-        <SectionHeading title="Sensor readings" description="Current acoustic score and hardware health by depth." />
+        <SectionHeading title="Sensor readings" description="Mock acoustic readings at four depths." />
         <div className="sensor-detail-grid">{sensors.map((sensor) => <SensorDetailCard key={sensor.id} sensor={sensor} />)}</div>
       </section>
     </div>
@@ -481,36 +360,28 @@ function SensorDetailCard({ sensor }: { sensor: Sensor }) {
   );
 }
 
-function AlertsPage({ alerts, updateAlert, openSilo }: { alerts: Alert[]; updateAlert: (id: string, state: AlertState) => void; openSilo: (id: string) => void }) {
-  const [filter, setFilter] = useState<"all" | AlertState>("all");
-  const filtered = filter === "all" ? alerts : alerts.filter((alert) => alert.state === filter);
+function AlertsPage({ alerts, openSilo }: { alerts: Alert[]; openSilo: (id: string) => void }) {
   return (
     <div className="page-stack">
-      <SectionHeading eyebrow="Event review" title="Alerts" description="Server-validated events that require monitoring or operator action." action={<div className="alert-summary"><Badge tone="critical">{alerts.filter((a) => a.state === "new").length} new</Badge><span>Last 30 days: 22 events</span></div>} />
-      <div className="filter-tabs" role="tablist">
-        {(["all", "new", "acknowledged", "resolved"] as const).map((item) => <button key={item} className={filter === item ? "filter-active" : ""} onClick={() => setFilter(item)}>{item[0].toUpperCase() + item.slice(1)}<span>{item === "all" ? alerts.length : alerts.filter((a) => a.state === item).length}</span></button>)}
-      </div>
+      <SectionHeading eyebrow="Prototype view" title="Alerts" description="Example events used to demonstrate how an operator could locate unusual activity." action={<Badge tone="neutral">Mock data</Badge>} />
       <div className="alerts-list">
-        {filtered.length ? filtered.map((alert) => <AlertCard key={alert.id} alert={alert} updateAlert={updateAlert} openSilo={openSilo} />) : <EmptyState>No alerts match this filter.</EmptyState>}
+        {alerts.length ? alerts.map((alert) => <AlertCard key={alert.id} alert={alert} openSilo={openSilo} />) : <EmptyState>No demo alerts.</EmptyState>}
       </div>
     </div>
   );
 }
 
-function AlertCard({ alert, updateAlert, openSilo }: { alert: Alert; updateAlert: (id: string, state: AlertState) => void; openSilo: (id: string) => void }) {
+function AlertCard({ alert, openSilo }: { alert: Alert; openSilo: (id: string) => void }) {
   return (
     <Card className={`alert-card alert-${alert.severity} alert-state-${alert.state}`}>
       <div className="alert-rail"><AlertTriangle size={20} /></div>
       <div className="alert-body">
-        <div className="alert-head"><div><Badge tone={alert.severity === "critical" ? "critical" : "warning"}>{alert.severity.toUpperCase()}</Badge><Badge tone="neutral">{alert.state}</Badge></div><span>{alert.timestamp}</span></div>
+        <div className="alert-head"><div><Badge tone={alert.severity === "critical" ? "critical" : "warning"}>{alert.severity === "critical" ? "HIGH ACTIVITY" : "ATTENTION"}</Badge></div><span>{alert.timestamp}</span></div>
         <h3>{alert.title}</h3>
         <p>{alert.message}</p>
         <div className="alert-facts"><span><small>Silo</small><strong>{formatSiloId(alert.siloId)}</strong></span><span><small>Sensor</small><strong>{alert.sensorId}</strong></span><span><small>Location</small><strong>{alert.position}</strong></span><span><small>Activity</small><strong>{alert.activityScore}%</strong></span></div>
-        <div className="recommendation"><ShieldCheck size={19} /><div><span>Recommended action</span><strong>{alert.recommendation}</strong></div></div>
         <div className="alert-actions">
-          {alert.state === "new" ? <Button onClick={() => updateAlert(alert.id, "acknowledged")}><Check size={16} />Acknowledge</Button> : null}
           <Button variant="secondary" onClick={() => openSilo(alert.siloId)}>View silo</Button>
-          {alert.state !== "resolved" ? <Button variant="ghost" onClick={() => updateAlert(alert.id, "resolved")}><CheckCircle2 size={16} />Mark as inspected</Button> : null}
         </div>
       </div>
     </Card>
@@ -607,25 +478,6 @@ function SettingsPage() {
           <div className="data-flow"><span><Radio size={18} /><b>48 acoustic sensors</b></span><ChevronRight size={17} /><span><Wifi size={18} /><b>Gateway KZN-01</b></span><ChevronRight size={17} /><span><Database size={18} /><b>API / Supabase ready</b></span><ChevronRight size={17} /><span><LayoutDashboard size={18} /><b>Dashboard</b></span></div>
         </Card>
       </div>
-    </div>
-  );
-}
-
-function NotificationCenter({ alerts, onClose, onViewSilo, onViewAll }: { alerts: Alert[]; onClose: () => void; onViewSilo: () => void; onViewAll: () => void }) {
-  const latest = alerts.find((alert) => alert.state === "new") ?? alerts[0];
-  return (
-    <div className="notification-center">
-      <div className="notification-head"><div><strong>Notifications</strong><span>{alerts.filter((alert) => alert.state === "new").length} unread</span></div><button aria-label="Close notifications" onClick={onClose}><X size={17} /></button></div>
-      <div className="notification-alert">
-        <div className="notification-severity"><AlertTriangle size={18} /><span>Critical · {latest.timestamp}</span></div>
-        <h3>{latest.title}</h3>
-        <div className="notification-location"><strong>Silo 04</strong><span>Lower-middle · Sensor C</span></div>
-        <div className="notification-score"><span>Activity <b>HIGH</b></span><strong>{latest.activityScore}%</strong></div>
-        <p>Elevated activity has persisted for {latest.durationMinutes} minutes.</p>
-        <div className="notification-action"><ShieldCheck size={17} /><span>Recommended action: inspect this area.</span></div>
-        <Button onClick={onViewSilo}>Open Silo 04 <ChevronRight size={16} /></Button>
-      </div>
-      <button className="view-all" onClick={onViewAll}>View all alerts</button>
     </div>
   );
 }
