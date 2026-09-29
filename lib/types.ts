@@ -29,6 +29,9 @@ export interface Sensor {
   position: string;
   depthPercent: number;
   activityScore: number;
+  eventCount: number;
+  baselineRms: number;
+  thresholdRms: number;
   status: SystemStatus;
   connectivity: "online" | "offline";
   battery: number;
