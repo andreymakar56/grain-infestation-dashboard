@@ -91,7 +91,7 @@ export function GrainDashboard() {
           <button className={view === "journal" ? "nav-current" : ""} onClick={() => navigate("journal")}>Журнал прототипа</button>
         </nav>
 
-        <span className="prototype-tag">Прототип · демонстрационные данные</span>
+        <span className="prototype-tag">Прототип · тестовые данные</span>
       </header>
 
       <main>
@@ -122,7 +122,7 @@ function Overview({ openSilo }: { openSilo: (id: string) => void }) {
       <PageHeading
         eyebrow={`${facility.name} · ${facility.location}`}
         title="Обзор элеватора"
-        description="Демонстрационная панель оператора. Все показания на этой странице являются моковыми."
+        description="Тестовая панель оператора. Все показания на этой странице являются тестовыми."
       />
 
       <button className="alert-strip" onClick={() => openSilo("silo-04")} aria-label="Открыть Силос 04 с тревогой">
@@ -137,7 +137,7 @@ function Overview({ openSilo }: { openSilo: (id: string) => void }) {
       <div className="summary-row">
         <div><span>Силосы</span><strong>{integerFormatter.format(silos.length)}</strong></div>
         <div><span>Датчики на связи</span><strong>{integerFormatter.format(online)} / 48</strong></div>
-        <div><span>Демо-тревоги</span><strong>{integerFormatter.format(initialAlerts.length)}</strong></div>
+        <div><span>Тестовые тревоги</span><strong>{integerFormatter.format(initialAlerts.length)}</strong></div>
       </div>
 
       <section className="silo-section">
@@ -179,7 +179,7 @@ function SiloDetail({ silo, sensors: siloSensors, history, goBack }: { silo: Sil
         <div>
           <p>МОНИТОРИНГ СИЛОСА</p>
           <h1>{silo.name}</h1>
-          <span>{silo.grain} · заполнение {integerFormatter.format(silo.fillPercent)}&nbsp;% · демонстрационные показания</span>
+          <span>{silo.grain} · заполнение {integerFormatter.format(silo.fillPercent)}&nbsp;% · тестовые показания</span>
         </div>
         <Status status={silo.status} showCode />
       </div>
@@ -227,7 +227,7 @@ function SiloDetail({ silo, sensors: siloSensors, history, goBack }: { silo: Sil
       ) : null}
 
       <section className="panel history-panel">
-        <div className="panel-heading"><h2>История активности</h2><span>Демонстрационные показания</span></div>
+        <div className="panel-heading"><h2>История активности</h2><span>Тестовые показания</span></div>
         <div className="history-chart" role="img" aria-label="График акустической активности по времени">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={history} margin={{ top: 10, right: 8, left: -22, bottom: 0 }}>
@@ -273,7 +273,7 @@ function CapsuleSilo({ sensors: siloSensors, fillPercent }: { sensors: Sensor[];
 function Alerts({ openSilo }: { openSilo: (id: string) => void }) {
   return (
     <div className="page">
-      <PageHeading eyebrow="ПРОТОТИП · ДЕМО-ДАННЫЕ" title="Журнал тревог" description="Примеры уведомлений, которые может получать оператор элеватора." />
+      <PageHeading eyebrow="ПРОТОТИП · ТЕСТОВЫЕ ДАННЫЕ" title="Журнал тревог" description="Примеры уведомлений, которые может получать оператор элеватора." />
       <div className="alerts-list">
         {initialAlerts.map((alert) => (
           <button key={alert.id} className="alert-row" onClick={() => openSilo(alert.siloId)} aria-label={`Открыть ${alert.title}, ${alert.timestamp}`}>

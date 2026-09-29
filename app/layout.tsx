@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "KOLOS · Акустический мониторинг зерна",
-  description: "Демонстрационная панель акустического мониторинга насекомых-вредителей в хранящемся зерне.",
+  description: "Тестовая панель акустического мониторинга насекомых-вредителей в хранящемся зерне.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

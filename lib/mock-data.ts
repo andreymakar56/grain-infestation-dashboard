@@ -3,7 +3,7 @@ import type { Alert, Facility, Sensor, Silo } from "./types";
 export const facility: Facility = {
   id: "facility-kzn-demo",
   name: "Демо-элеватор",
-  location: "Казань, Республика Татарстан",
+  location: "Оренбург, Оренбургская область",
 };
 
 const siloSeed = [
@@ -155,7 +155,7 @@ export const initialAlerts: Alert[] = [
     timestamp: "вчера, 09:40",
     severity: "warning",
     title: "Событие акустической активности",
-    message: "Исторический пример события, включённый в демонстрационную панель.",
+    message: "Исторический пример события, включённый в тестовую панель.",
     position: "нижняя часть",
     activityScore: 43,
     durationMinutes: 12,
